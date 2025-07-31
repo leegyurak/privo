@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: ${TEST_DATABASE_URL:jdbc:mysql://localhost:3307/privo_test}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${TEST_DATABASE_USERNAME:privo}
+    password: ${TEST_DATABASE_PASSWORD:privo123}
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  
+  flyway:
+    enabled: false
+  
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+  
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: test@example.com
+    password: testpassword
+
+logging:
+  level:
+    com.privo: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.test: DEBUG
+
+privo:
+  jwt:
+    secret: test-jwt-secret-key-for-testing-only
+    expiration: 86400000
+  
+  encryption:
+    algorithm: AES
+    transformation: AES/GCM/NoPadding
+    key-length: 256

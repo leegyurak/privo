@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: privo-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: privo
+      MYSQL_USER: privo
+      MYSQL_PASSWORD: privo123
+    ports:
+      - "23306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - privo-network
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  mysql-test:
+    image: mysql:8.0
+    container_name: privo-mysql-test
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: privo_test
+      MYSQL_USER: privo
+      MYSQL_PASSWORD: privo123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    networks:
+      - privo-network
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    profiles:
+      - test
+
+  redis:
+    image: redis:7-alpine
+    container_name: privo-redis
+    ports:
+      - "26379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - privo-network
+    command: redis-server --appendonly yes
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: privo-redis-test
+    ports:
+      - "6380:6379"
+    networks:
+      - privo-network
+    profiles:
+      - test
+
+  adminer:
+    image: adminer:latest
+    container_name: privo-adminer
+    ports:
+      - "8081:8080"
+    networks:
+      - privo-network
+    profiles:
+      - dev
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: privo-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8082:8081"
+    networks:
+      - privo-network
+    profiles:
+      - dev
+    depends_on:
+      - redis
+
+  app:
+    build: .
+    container_name: privo-app
+    environment:
+      DATABASE_URL: jdbc:mysql://mysql:3306/privo
+      DATABASE_USERNAME: privo
+      DATABASE_PASSWORD: privo123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_EXPIRATION: 86400000
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8080:8080"
+    networks:
+      - privo-network
+    depends_on:
+      - mysql
+      - redis
+    profiles:
+      - app
+
+volumes:
+  mysql_data:
+    driver: local
+  mysql_test_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  privo-network:
+    driver: bridge
