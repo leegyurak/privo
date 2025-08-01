@@ -1,0 +1,12 @@
+-- Add forward secrecy support columns to chat_messages table
+ALTER TABLE chat_messages 
+ADD COLUMN message_number INTEGER,
+ADD COLUMN chain_length INTEGER;
+
+-- Add index for message ordering
+CREATE INDEX idx_chat_messages_message_number ON chat_messages(chat_room_id, message_number);
+
+-- Add configuration setting for forward secrecy
+INSERT INTO configuration (key, value, description) VALUES 
+('encryption.forward_secrecy_enabled', 'true', 'Enable forward secrecy encryption for messages')
+ON CONFLICT (key) DO NOTHING;
