@@ -1,0 +1,11 @@
+{
+  "ignore_dirs": [
+    "node_modules",
+    ".git",
+    ".expo",
+    "dist",
+    "build",
+    "coverage",
+    ".nyc_output"
+  ]
+}
