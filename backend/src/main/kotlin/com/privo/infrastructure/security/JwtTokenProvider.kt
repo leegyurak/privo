@@ -18,26 +18,26 @@ class JwtTokenProvider(
     
     private val key: SecretKey = Keys.hmacShaKeyFor(jwtSecret.toByteArray())
     
-    fun generateToken(userHashedId: String): String {
+    fun generateToken(userId: String): String {
         val now = Date()
         val expiryDate = Date(now.time + jwtExpiration)
         
         return Jwts.builder()
-            .subject(userHashedId)
+            .subject(userId)
             .issuedAt(now)
             .expiration(expiryDate)
             .signWith(key)
             .compact()
     }
     
-    fun getUserHashedIdFromToken(token: String): String {
+    fun getUserIdFromToken(token: String): String {
         val claims: Claims = Jwts.parser()
             .verifyWith(key)
             .build()
             .parseSignedClaims(token)
             .payload
         
-        return claims.subject
+        return claims.subject ?: throw IllegalArgumentException("Token subject is null")
     }
     
     fun validateToken(token: String): Boolean {

@@ -13,8 +13,8 @@ class ChatRoomMember(
     @Column(nullable = false)
     val chatRoomId: String,
     
-    @Column(nullable = false)
-    val userHashedId: String,
+    @Column(name = "user_id", nullable = false, length = 64)
+    val userId: String,
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -34,7 +34,19 @@ class ChatRoomMember(
         return ChatRoomMember(
             id = this.id,
             chatRoomId = this.chatRoomId,
-            userHashedId = this.userHashedId,
+            userId = this.userId,
+            role = this.role,
+            joinedAt = this.joinedAt,
+            leftAt = LocalDateTime.now(),
+            isActive = false
+        )
+    }
+    
+    fun deactivate(): ChatRoomMember {
+        return ChatRoomMember(
+            id = this.id,
+            chatRoomId = this.chatRoomId,
+            userId = this.userId,
             role = this.role,
             joinedAt = this.joinedAt,
             leftAt = LocalDateTime.now(),
@@ -46,7 +58,7 @@ class ChatRoomMember(
         return ChatRoomMember(
             id = this.id,
             chatRoomId = this.chatRoomId,
-            userHashedId = this.userHashedId,
+            userId = this.userId,
             role = MemberRole.ADMIN,
             joinedAt = this.joinedAt,
             leftAt = this.leftAt,

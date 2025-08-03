@@ -20,8 +20,8 @@ class EncryptionController(
     fun generateKeyPair(
         @AuthenticationPrincipal userDetails: UserDetails
     ): ResponseEntity<KeyPairResponse> {
-        val userHashedId = userDetails.username
-        val keyPair = enhancedEncryptionService.generateUserKeyPair(userHashedId)
+        val userId = userDetails.username
+        val keyPair = enhancedEncryptionService.generateUserKeyPair(userId)
         
         return ResponseEntity.ok(
             KeyPairResponse(

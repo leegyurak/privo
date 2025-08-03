@@ -8,7 +8,9 @@ import com.privo.domain.model.MemberRole
 import com.privo.domain.repository.ChatRoomRepository
 import com.privo.domain.repository.ChatRoomMemberRepository
 import com.privo.infrastructure.messaging.EventPublisher
+import com.privo.infrastructure.messaging.UserEventPublisher
 import com.privo.infrastructure.messaging.UserJoinedEvent
+import com.privo.infrastructure.messaging.ChatRoomListUpdatedEvent
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -18,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional
 class CreateChatRoomUseCase(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomMemberRepository: ChatRoomMemberRepository,
-    private val eventPublisher: EventPublisher
+    private val eventPublisher: EventPublisher,
+    private val userEventPublisher: UserEventPublisher,
+    private val getChatRoomsUseCase: GetChatRoomsUseCase
 ) {
     
     companion object {
@@ -37,18 +41,18 @@ class CreateChatRoomUseCase(
         
         val creatorMember = ChatRoomMember(
             chatRoomId = savedChatRoom.id,
-            userHashedId = creatorHashedId,
+            userId = creatorHashedId,
             role = MemberRole.OWNER
         )
         chatRoomMemberRepository.save(creatorMember)
         
         val allMemberIds = mutableSetOf(creatorHashedId)
-        allMemberIds.addAll(request.memberUserHashedIds)
+        allMemberIds.addAll(request.memberUserIds)
         
-        request.memberUserHashedIds.forEach { memberHashedId ->
+        request.memberUserIds.forEach { memberHashedId ->
             val member = ChatRoomMember(
                 chatRoomId = savedChatRoom.id,
-                userHashedId = memberHashedId,
+                userId = memberHashedId,
                 role = MemberRole.MEMBER
             )
             chatRoomMemberRepository.save(member)
@@ -56,12 +60,28 @@ class CreateChatRoomUseCase(
             eventPublisher.publishChatEvent(
                 UserJoinedEvent(
                     chatRoomId = savedChatRoom.id,
-                    userHashedId = memberHashedId
+                    userId = memberHashedId
                 )
             )
         }
         
         logger.info("Chat room created successfully: {}", savedChatRoom.id)
+        
+        // 모든 멤버에게 채팅방 목록 업데이트 알림
+        allMemberIds.forEach { memberId ->
+            try {
+                val updatedChatRooms = getChatRoomsUseCase.execute(memberId)
+                userEventPublisher.publishToUser(
+                    memberId,
+                    ChatRoomListUpdatedEvent(
+                        userId = memberId,
+                        chatRooms = updatedChatRooms
+                    )
+                )
+            } catch (e: Exception) {
+                logger.warn("Failed to send chat room list update to user {}: {}", memberId, e.message)
+            }
+        }
         
         return ChatRoomResponse(
             id = savedChatRoom.id,

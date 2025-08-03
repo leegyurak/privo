@@ -34,7 +34,7 @@ class LoginUserUseCaseTest {
         )
         
         val user = User(
-            id = "user-123",
+            id = "hashedUserId",
             nickname = request.nickname,
             passwordHash = "hashedPassword",
             publicKeyHash = "hashedPublicKey"
@@ -42,9 +42,7 @@ class LoginUserUseCaseTest {
         
         every { userRepository.findByNickname(request.nickname) } returns user
         every { passwordUtil.verifyPassword(request.password, user.passwordHash) } returns true
-        every { passwordUtil.generateUserSpecificSalt(user.id) } returns "userSpecificSalt"
-        every { passwordUtil.hashWithSalt(user.id, "userSpecificSalt") } returns "hashedUserId"
-        every { jwtTokenProvider.generateToken("hashedUserId") } returns "jwt-token"
+        every { jwtTokenProvider.generateToken(user.id) } returns "jwt-token"
         every { jwtTokenProvider.getExpirationTime() } returns 86400000L
         
         // When
@@ -55,13 +53,11 @@ class LoginUserUseCaseTest {
         assertEquals("jwt-token", authResponse.accessToken)
         assertEquals("Bearer", authResponse.tokenType)
         assertEquals(86400000L, authResponse.expiresIn)
-        assertEquals("hashedUserId", authResponse.userHashedId)
+        assertEquals("hashedUserId", authResponse.userId)
         
         verify { userRepository.findByNickname(request.nickname) }
         verify { passwordUtil.verifyPassword(request.password, user.passwordHash) }
-        verify { passwordUtil.generateUserSpecificSalt(user.id) }
-        verify { passwordUtil.hashWithSalt(user.id, "userSpecificSalt") }
-        verify { jwtTokenProvider.generateToken("hashedUserId") }
+        verify { jwtTokenProvider.generateToken(user.id) }
         verify { jwtTokenProvider.getExpirationTime() }
     }
     

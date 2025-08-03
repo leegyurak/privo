@@ -27,7 +27,7 @@ class GetUserByNicknameUseCase(
         logger.info("User profile retrieved successfully for nickname: {}", nickname)
         
         return UserProfileResponse(
-            userHashedId = user.id, // In a real app, you might want to hash this
+            userId = user.id, // In a real app, you might want to hash this
             nickname = user.nickname,
             createdAt = user.createdAt.format(DATE_FORMATTER)
         )

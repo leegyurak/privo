@@ -3,20 +3,16 @@
 
 -- Users table
 CREATE TABLE users (
-    id VARCHAR(36) NOT NULL,
-    email VARCHAR(255) NOT NULL,
+    id VARCHAR(72) NOT NULL,
+    nickname VARCHAR(50) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     public_key_hash VARCHAR(255) NOT NULL,
-    is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-    email_verification_token VARCHAR(255),
-    email_verification_expiry DATETIME(6),
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     
     PRIMARY KEY (id),
-    UNIQUE KEY uk_users_email (email),
-    INDEX idx_users_email (email),
-    INDEX idx_users_verification_token (email_verification_token),
+    UNIQUE KEY uk_users_nickname (nickname),
+    INDEX idx_users_nickname (nickname),
     INDEX idx_users_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -38,7 +34,7 @@ CREATE TABLE chat_rooms (
 CREATE TABLE chat_room_members (
     id VARCHAR(36) NOT NULL,
     chat_room_id VARCHAR(36) NOT NULL,
-    user_hashed_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(72) NOT NULL,
     role ENUM('OWNER', 'ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER',
     joined_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     left_at DATETIME(6),
@@ -46,17 +42,17 @@ CREATE TABLE chat_room_members (
     
     PRIMARY KEY (id),
     INDEX idx_chat_room_members_room (chat_room_id),
-    INDEX idx_chat_room_members_user (user_hashed_id),
+    INDEX idx_chat_room_members_user (user_id),
     INDEX idx_chat_room_members_active (is_active),
     INDEX idx_chat_room_members_joined_at (joined_at),
-    UNIQUE KEY uk_chat_room_members (chat_room_id, user_hashed_id)
+    UNIQUE KEY uk_chat_room_members (chat_room_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Chat messages table
 CREATE TABLE chat_messages (
     id VARCHAR(36) NOT NULL,
     chat_room_id VARCHAR(36) NOT NULL,
-    sender_hashed_id VARCHAR(255) NOT NULL,
+    sender_id VARCHAR(36) NOT NULL,
     encrypted_content TEXT NOT NULL,
     content_iv VARCHAR(255) NOT NULL,
     message_type ENUM('TEXT', 'IMAGE', 'FILE', 'SYSTEM') NOT NULL DEFAULT 'TEXT',
@@ -65,8 +61,24 @@ CREATE TABLE chat_messages (
     
     PRIMARY KEY (id),
     INDEX idx_chat_messages_room_timestamp (chat_room_id, timestamp),
-    INDEX idx_chat_messages_sender (sender_hashed_id),
+    INDEX idx_chat_messages_sender (sender_id),
     INDEX idx_chat_messages_timestamp (timestamp),
     INDEX idx_chat_messages_room_type (chat_room_id, message_type),
     INDEX idx_chat_messages_not_deleted (chat_room_id, is_deleted, timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- User blocks table
+CREATE TABLE user_blocks (
+    id VARCHAR(36) NOT NULL,
+    blocker_user_id VARCHAR(72) NOT NULL,
+    blocked_user_id VARCHAR(72) NOT NULL,
+    blocked_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    
+    PRIMARY KEY (id),
+    INDEX idx_user_blocks_blocker (blocker_user_id),
+    INDEX idx_user_blocks_blocked (blocked_user_id),
+    INDEX idx_user_blocks_active (is_active),
+    INDEX idx_user_blocks_blocker_active (blocker_user_id, is_active),
+    UNIQUE KEY uk_user_blocks (blocker_user_id, blocked_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

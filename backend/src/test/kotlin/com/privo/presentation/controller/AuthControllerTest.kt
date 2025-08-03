@@ -133,7 +133,7 @@ class AuthControllerTest {
         val authResponse = AuthResponse(
             accessToken = "jwt-token",
             expiresIn = 86400000L,
-            userHashedId = "hashed-user-id"
+            userId = "hashed-user-id"
         )
         
         every { loginUserUseCase.execute(request) } returns authResponse
@@ -148,7 +148,7 @@ class AuthControllerTest {
             .andExpect(jsonPath("$.accessToken").value("jwt-token"))
             .andExpect(jsonPath("$.tokenType").value("Bearer"))
             .andExpect(jsonPath("$.expiresIn").value(86400000L))
-            .andExpect(jsonPath("$.userHashedId").value("hashed-user-id"))
+            .andExpect(jsonPath("$.userId").value("hashed-user-id"))
         
         verify { loginUserUseCase.execute(request) }
     }
@@ -221,7 +221,7 @@ class AuthControllerTest {
         // Given
         val nickname = "testuser"
         val userProfile = UserProfileResponse(
-            userHashedId = "user-123",
+            userId = "user-123",
             nickname = nickname,
             createdAt = "2023-01-01 12:00:00"
         )
@@ -231,7 +231,7 @@ class AuthControllerTest {
         // When & Then
         mockMvc.perform(get("/api/auth/user/$nickname"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.userHashedId").value("user-123"))
+            .andExpect(jsonPath("$.userId").value("user-123"))
             .andExpect(jsonPath("$.nickname").value(nickname))
             .andExpect(jsonPath("$.createdAt").value("2023-01-01 12:00:00"))
         

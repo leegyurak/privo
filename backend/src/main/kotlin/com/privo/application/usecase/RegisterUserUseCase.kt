@@ -32,7 +32,13 @@ class RegisterUserUseCase(
         val passwordHash = passwordUtil.hashPassword(request.password)
         val publicKeyHash = passwordUtil.hashWithSalt(request.publicKey, passwordUtil.generateSalt())
         
+        // Generate consistent hashed user ID from the start
+        val tempUuid = java.util.UUID.randomUUID().toString()
+        val userSpecificSalt = passwordUtil.generateUserSpecificSalt(tempUuid)
+        val hashedUserId = passwordUtil.hashWithSalt(tempUuid, userSpecificSalt)
+        
         val user = User(
+            id = hashedUserId,
             nickname = request.nickname,
             passwordHash = passwordHash,
             publicKeyHash = publicKeyHash

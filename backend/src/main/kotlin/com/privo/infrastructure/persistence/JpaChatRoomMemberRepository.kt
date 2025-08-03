@@ -7,9 +7,9 @@ import org.springframework.stereotype.Repository
 
 interface JpaChatRoomMemberDataRepository : JpaRepository<ChatRoomMember, String> {
     fun findByChatRoomId(chatRoomId: String): List<ChatRoomMember>
-    fun findByUserHashedId(userHashedId: String): List<ChatRoomMember>
-    fun findByChatRoomIdAndUserHashedId(chatRoomId: String, userHashedId: String): ChatRoomMember?
-    fun findByUserHashedIdAndIsActive(userHashedId: String, isActive: Boolean): List<ChatRoomMember>
+    fun findByUserId(userId: String): List<ChatRoomMember>
+    fun findByChatRoomIdAndUserId(chatRoomId: String, userId: String): ChatRoomMember?
+    fun findByUserIdAndIsActive(userId: String, isActive: Boolean): List<ChatRoomMember>
     fun countByChatRoomIdAndIsActive(chatRoomId: String, isActive: Boolean): Int
 }
 
@@ -30,16 +30,16 @@ class JpaChatRoomMemberRepository(
         return jpaChatRoomMemberDataRepository.findByChatRoomId(chatRoomId)
     }
     
-    override fun findByUserHashedId(userHashedId: String): List<ChatRoomMember> {
-        return jpaChatRoomMemberDataRepository.findByUserHashedId(userHashedId)
+    override fun findByUserId(userId: String): List<ChatRoomMember> {
+        return jpaChatRoomMemberDataRepository.findByUserId(userId)
     }
     
-    override fun findByChatRoomIdAndUserHashedId(chatRoomId: String, userHashedId: String): ChatRoomMember? {
-        return jpaChatRoomMemberDataRepository.findByChatRoomIdAndUserHashedId(chatRoomId, userHashedId)
+    override fun findByChatRoomIdAndUserId(chatRoomId: String, userId: String): ChatRoomMember? {
+        return jpaChatRoomMemberDataRepository.findByChatRoomIdAndUserId(chatRoomId, userId)
     }
     
-    override fun findActiveChatRoomsByUserHashedId(userHashedId: String): List<ChatRoomMember> {
-        return jpaChatRoomMemberDataRepository.findByUserHashedIdAndIsActive(userHashedId, true)
+    override fun findActiveChatRoomsByUserId(userId: String): List<ChatRoomMember> {
+        return jpaChatRoomMemberDataRepository.findByUserIdAndIsActive(userId, true)
     }
     
     override fun countActiveMembersByRoomId(chatRoomId: String): Int {

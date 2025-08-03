@@ -12,32 +12,32 @@ class WebSocketSessionManager {
     /**
      * Add a WebSocket session for a user
      */
-    fun addSession(userHashedId: String, session: WebSocketSession) {
-        userSessions.computeIfAbsent(userHashedId) { mutableSetOf() }.add(session)
+    fun addSession(userId: String, session: WebSocketSession) {
+        userSessions.computeIfAbsent(userId) { mutableSetOf() }.add(session)
     }
     
     /**
      * Remove a WebSocket session for a user
      */
-    fun removeSession(userHashedId: String, session: WebSocketSession) {
-        userSessions[userHashedId]?.remove(session)
-        if (userSessions[userHashedId]?.isEmpty() == true) {
-            userSessions.remove(userHashedId)
+    fun removeSession(userId: String, session: WebSocketSession) {
+        userSessions[userId]?.remove(session)
+        if (userSessions[userId]?.isEmpty() == true) {
+            userSessions.remove(userId)
         }
     }
     
     /**
      * Check if user is online (has active WebSocket connections)
      */
-    fun isUserOnline(userHashedId: String): Boolean {
-        return userSessions[userHashedId]?.any { it.isOpen } == true
+    fun isUserOnline(userId: String): Boolean {
+        return userSessions[userId]?.any { it.isOpen } == true
     }
     
     /**
      * Get all active sessions for a user
      */
-    fun getUserSessions(userHashedId: String): Set<WebSocketSession> {
-        return userSessions[userHashedId]?.filter { it.isOpen }?.toSet() ?: emptySet()
+    fun getUserSessions(userId: String): Set<WebSocketSession> {
+        return userSessions[userId]?.filter { it.isOpen }?.toSet() ?: emptySet()
     }
     
     /**

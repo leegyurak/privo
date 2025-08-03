@@ -10,7 +10,7 @@ data class CreateChatRoomRequest(
     
     val isDirectMessage: Boolean = false,
     
-    val memberUserHashedIds: List<String> = emptyList()
+    val memberUserIds: List<String> = emptyList()
 )
 
 data class SendMessageRequest(
@@ -20,7 +20,9 @@ data class SendMessageRequest(
     @field:NotBlank(message = "초기화 벡터는 필수입니다")
     val contentIv: String,
     
-    val messageType: String = "TEXT"
+    val messageType: String = "TEXT",
+    
+    val replyToMessageId: String? = null
 )
 
 data class ChatRoomResponse(
@@ -35,7 +37,7 @@ data class ChatRoomResponse(
 data class ChatMessageResponse(
     val id: String,
     val chatRoomId: String,
-    val senderHashedId: String,
+    val senderId: String,
     val encryptedContent: String,
     val contentIv: String,
     val messageType: String,
@@ -46,7 +48,7 @@ data class ChatMessageResponse(
 data class ChatRoomMemberResponse(
     val id: String,
     val chatRoomId: String,
-    val userHashedId: String,
+    val userId: String,
     val role: String,
     val joinedAt: String,
     val isActive: Boolean
@@ -58,15 +60,10 @@ data class GetMessagesRequest(
     val after: String? = null
 )
 
-data class SendDirectMessageRequest(
+data class CreateDirectMessageRoomRequest(
     @field:NotBlank(message = "수신자 해시 ID는 필수입니다")
     val recipientHashedId: String,
     
-    @field:NotBlank(message = "암호화된 메시지 내용은 필수입니다")
-    val encryptedContent: String,
-    
-    @field:NotBlank(message = "초기화 벡터는 필수입니다")
-    val contentIv: String,
-    
-    val messageType: String = "TEXT"
+    @field:NotBlank(message = "채팅방 이름은 필수입니다")
+    val name: String
 )

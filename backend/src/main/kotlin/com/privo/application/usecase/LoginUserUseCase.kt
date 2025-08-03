@@ -31,9 +31,8 @@ class LoginUserUseCase(
             throw IllegalArgumentException("잘못된 닉네임 또는 비밀번호입니다")
         }
         
-        val userSpecificSalt = passwordUtil.generateUserSpecificSalt(user.id)
-        val userHashedId = passwordUtil.hashWithSalt(user.id, userSpecificSalt)
-        val accessToken = jwtTokenProvider.generateToken(userHashedId)
+        // The user.id is already hashed, so use it directly
+        val accessToken = jwtTokenProvider.generateToken(user.id)
         val expiresIn = jwtTokenProvider.getExpirationTime()
         
         logger.info("User logged in successfully: {}", user.id)
@@ -41,7 +40,7 @@ class LoginUserUseCase(
         return AuthResponse(
             accessToken = accessToken,
             expiresIn = expiresIn,
-            userHashedId = userHashedId
+            userId = user.id
         )
     }
 }

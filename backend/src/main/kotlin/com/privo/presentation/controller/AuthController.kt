@@ -2,6 +2,7 @@ package com.privo.presentation.controller
 
 import com.privo.application.dto.*
 import com.privo.application.service.NicknameGeneratorService
+import com.privo.application.usecase.DeleteAccountUseCase
 import com.privo.application.usecase.GetUserByNicknameUseCase
 import com.privo.application.usecase.LoginUserUseCase
 import com.privo.application.usecase.RegisterUserUseCase
@@ -9,6 +10,7 @@ import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*
 class AuthController(
     private val registerUserUseCase: RegisterUserUseCase,
     private val loginUserUseCase: LoginUserUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val nicknameGeneratorService: NicknameGeneratorService,
     private val getUserByNicknameUseCase: GetUserByNicknameUseCase
 ) {
@@ -102,5 +105,24 @@ class AuthController(
     fun getCurrentUser(): ResponseEntity<Map<String, String>> {
         // TODO: Implement get current user profile
         return ResponseEntity.ok(mapOf("message" to "User profile endpoint - to be implemented"))
+    }
+    
+    @DeleteMapping("/account")
+    fun deleteAccount(authentication: Authentication): ResponseEntity<Any> {
+        return try {
+            val userId = authentication.name
+            logger.info("User {} attempting to delete account", userId)
+            
+            deleteAccountUseCase.execute(userId)
+            logger.info("Successfully deleted account for user: {}", userId)
+            
+            ResponseEntity.ok(mapOf("message" to "계정이 성공적으로 삭제되었습니다"))
+        } catch (e: IllegalArgumentException) {
+            logger.warn("Delete account failed: {}", e.message)
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "계정 삭제에 실패했습니다")))
+        } catch (e: Exception) {
+            logger.error("Delete account error", e)
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("error" to "서버 오류가 발생했습니다"))
+        }
     }
 }

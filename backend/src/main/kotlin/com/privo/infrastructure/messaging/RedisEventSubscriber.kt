@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.data.redis.listener.ChannelTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
-import org.springframework.data.redis.listener.adapter.MessageListenerAdapter
+import org.springframework.data.redis.connection.MessageListener
 import org.springframework.stereotype.Component
 import java.util.concurrent.ConcurrentHashMap
 
@@ -26,13 +26,19 @@ class RedisEventSubscriber(
         start()
     }
     
-    private val subscriptions = ConcurrentHashMap<String, MessageListenerAdapter>()
+    private val subscriptions = ConcurrentHashMap<String, MessageListener>()
     
     override fun subscribe(chatRoomId: String, handler: (ChatEvent) -> Unit) {
+        // 기존 구독이 있다면 먼저 제거
+        subscriptions[chatRoomId]?.let { existingListener ->
+            listenerContainer.removeMessageListener(existingListener)
+            logger.debug("Removed existing subscription for room: {}", chatRoomId)
+        }
+        
         val channelName = "$CHAT_EVENTS_CHANNEL:$chatRoomId"
         val topic = ChannelTopic(channelName)
         
-        val messageListener = MessageListenerAdapter({ message: org.springframework.data.redis.connection.Message, pattern: ByteArray? ->
+        val messageListener = MessageListener { message, _ ->
             try {
                 val eventJson = String(message.body)
                 val event = objectMapper.readValue(eventJson, ChatEvent::class.java)
@@ -41,7 +47,7 @@ class RedisEventSubscriber(
             } catch (e: Exception) {
                 logger.error("Failed to process chat event from channel {}: {}", channelName, String(message.body), e)
             }
-        })
+        }
         
         subscriptions[chatRoomId] = messageListener
         listenerContainer.addMessageListener(messageListener, topic)

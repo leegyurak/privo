@@ -18,11 +18,11 @@ class GetChatRoomsUseCase(
         private val logger = LoggerFactory.getLogger(GetChatRoomsUseCase::class.java)
     }
     
-    fun execute(userHashedId: String): List<ChatRoomResponse> {
-        logger.info("Getting chat rooms for user: {}", userHashedId)
+    fun execute(userId: String): List<ChatRoomResponse> {
+        logger.info("Getting chat rooms for user: {}", userId)
         
-        val chatRooms = chatRoomRepository.findByUserId(userHashedId)
-        logger.info("Found {} chat rooms for user {}", chatRooms.size, userHashedId)
+        val chatRooms = chatRoomRepository.findByUserId(userId)
+        logger.info("Found {} chat rooms for user {}", chatRooms.size, userId)
         
         return chatRooms.map { chatRoom ->
             val members = chatRoomMemberRepository.findByChatRoomId(chatRoom.id)

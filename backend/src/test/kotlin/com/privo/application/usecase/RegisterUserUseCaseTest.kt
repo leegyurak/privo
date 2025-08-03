@@ -46,6 +46,8 @@ class RegisterUserUseCaseTest {
         every { passwordUtil.hashPassword(request.password) } returns "hashedPassword"
         every { passwordUtil.generateSalt() } returns "randomSalt"
         every { passwordUtil.hashWithSalt(request.publicKey, "randomSalt") } returns "hashedPublicKey"
+        every { passwordUtil.generateUserSpecificSalt(any()) } returns "userSpecificSalt"
+        every { passwordUtil.hashWithSalt(any(), "userSpecificSalt") } returns "hashedUserId"
         every { userRepository.save(capture(userSlot)) } returns savedUser
         
         // When
@@ -63,6 +65,8 @@ class RegisterUserUseCaseTest {
         verify { passwordUtil.hashPassword(request.password) }
         verify { passwordUtil.generateSalt() }
         verify { passwordUtil.hashWithSalt(request.publicKey, "randomSalt") }
+        verify { passwordUtil.generateUserSpecificSalt(any()) }
+        verify { passwordUtil.hashWithSalt(any(), "userSpecificSalt") }
         verify { userRepository.save(any()) }
     }
     

@@ -13,16 +13,16 @@ class User(
     @Column(unique = true, nullable = false, length = 50)
     val nickname: String,
     
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false)
     val passwordHash: String,
     
-    @Column(nullable = false)
+    @Column(name = "public_key_hash", nullable = false)
     val publicKeyHash: String,
     
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
     
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     val updatedAt: LocalDateTime = LocalDateTime.now()
 ) {
     

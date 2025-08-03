@@ -1,7 +1,10 @@
 package com.privo.presentation.controller
 
 import com.privo.application.dto.*
-import com.privo.application.usecase.*
+import com.privo.application.usecase.CreateChatRoomUseCase
+import com.privo.application.usecase.GetChatRoomsUseCase
+import com.privo.application.usecase.LeaveChatRoomUseCase
+import com.privo.application.usecase.SendDirectMessageUseCase
 import com.privo.domain.repository.ChatRoomMemberRepository
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
@@ -15,8 +18,7 @@ import org.springframework.web.bind.annotation.*
 class ChatController(
     private val createChatRoomUseCase: CreateChatRoomUseCase,
     private val getChatRoomsUseCase: GetChatRoomsUseCase,
-    private val sendMessageUseCase: SendMessageUseCase,
-    private val getMessagesUseCase: GetMessagesUseCase,
+    private val leaveChatRoomUseCase: LeaveChatRoomUseCase,
     private val sendDirectMessageUseCase: SendDirectMessageUseCase,
     private val chatRoomMemberRepository: ChatRoomMemberRepository
 ) {
@@ -25,19 +27,19 @@ class ChatController(
         private val logger = LoggerFactory.getLogger(ChatController::class.java)
     }
     
-    @GetMapping("/debug/rooms/{userHashedId}")
-    fun debugChatRooms(@PathVariable userHashedId: String): ResponseEntity<Any> {
+    @GetMapping("/debug/rooms/{userId}")
+    fun debugChatRooms(@PathVariable userId: String): ResponseEntity<Any> {
         return try {
-            logger.info("Debug: Getting chat rooms for user: {}", userHashedId)
-            val chatRooms = getChatRoomsUseCase.execute(userHashedId)
-            logger.info("Debug: Found {} chat rooms for user {}", chatRooms.size, userHashedId)
+            logger.info("Debug: Getting chat rooms for user: {}", userId)
+            val chatRooms = getChatRoomsUseCase.execute(userId)
+            logger.info("Debug: Found {} chat rooms for user {}", chatRooms.size, userId)
             
             // Additional debugging: check raw memberships
-            val memberships = chatRoomMemberRepository.findByUserHashedId(userHashedId)
-            val activeMemberships = chatRoomMemberRepository.findActiveChatRoomsByUserHashedId(userHashedId)
+            val memberships = chatRoomMemberRepository.findByUserId(userId)
+            val activeMemberships = chatRoomMemberRepository.findActiveChatRoomsByUserId(userId)
             
             logger.info("Debug: User {} has {} total memberships, {} active", 
-                userHashedId, memberships.size, activeMemberships.size)
+                userId, memberships.size, activeMemberships.size)
             
             memberships.forEach { membership ->
                 logger.info("Debug: Membership - Room: {}, Active: {}, Role: {}", 
@@ -45,7 +47,7 @@ class ChatController(
             }
             
             ResponseEntity.ok(mapOf(
-                "userHashedId" to userHashedId,
+                "userId" to userId,
                 "chatRoomsCount" to chatRooms.size,
                 "chatRooms" to chatRooms,
                 "totalMemberships" to memberships.size,
@@ -69,8 +71,8 @@ class ChatController(
         authentication: Authentication
     ): ResponseEntity<Any> {
         return try {
-            val userHashedId = authentication.name
-            val chatRoom = createChatRoomUseCase.execute(request, userHashedId)
+            val userId = authentication.name
+            val chatRoom = createChatRoomUseCase.execute(request, userId)
             
             ResponseEntity.status(HttpStatus.CREATED).body(chatRoom)
         } catch (e: IllegalArgumentException) {
@@ -85,8 +87,8 @@ class ChatController(
     @GetMapping("/rooms")
     fun getChatRooms(authentication: Authentication): ResponseEntity<Any> {
         return try {
-            val userHashedId = authentication.name
-            val chatRooms = getChatRoomsUseCase.execute(userHashedId)
+            val userId = authentication.name
+            val chatRooms = getChatRoomsUseCase.execute(userId)
             
             ResponseEntity.ok(chatRooms)
         } catch (e: Exception) {
@@ -95,67 +97,47 @@ class ChatController(
         }
     }
     
-    @PostMapping("/rooms/{chatRoomId}/messages")
-    fun sendMessage(
-        @PathVariable chatRoomId: String,
-        @Valid @RequestBody request: SendMessageRequest,
+    
+    @PostMapping("/rooms/direct-messages")
+    fun createDirectMessageRoom(
+        @Valid @RequestBody request: CreateDirectMessageRoomRequest,
         authentication: Authentication
     ): ResponseEntity<Any> {
         return try {
-            val userHashedId = authentication.name
-            val message = sendMessageUseCase.execute(chatRoomId, request, userHashedId)
+            val senderId = authentication.name
+            logger.info("API: Creating DM room between {} and {}", senderId, request.recipientHashedId)
             
-            ResponseEntity.status(HttpStatus.CREATED).body(message)
+            val chatRoom = sendDirectMessageUseCase.createDirectMessageRoom(request.recipientHashedId, senderId, request.name)
+            logger.info("API: DM room created successfully: {}", chatRoom.id)
+            
+            ResponseEntity.status(HttpStatus.CREATED).body(chatRoom)
         } catch (e: IllegalArgumentException) {
-            logger.warn("Send message failed: {}", e.message)
-            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "메시지 전송에 실패했습니다")))
+            logger.warn("Create direct message room failed: {}", e.message)
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "DM 채팅방 생성에 실패했습니다")))
         } catch (e: Exception) {
-            logger.error("Send message error", e)
+            logger.error("Create direct message room error", e)
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("error" to "서버 오류가 발생했습니다"))
         }
     }
     
-    @GetMapping("/rooms/{chatRoomId}/messages")
-    fun getMessages(
+    @PostMapping("/rooms/{chatRoomId}/leave")
+    fun leaveChatRoom(
         @PathVariable chatRoomId: String,
-        @RequestParam(defaultValue = "50") limit: Int,
-        @RequestParam(defaultValue = "0") offset: Int,
-        @RequestParam(required = false) after: String?,
         authentication: Authentication
     ): ResponseEntity<Any> {
         return try {
-            val userHashedId = authentication.name
-            val request = GetMessagesRequest(limit, offset, after)
-            val messages = getMessagesUseCase.execute(chatRoomId, request, userHashedId)
+            val userId = authentication.name
+            logger.info("User {} attempting to leave chat room: {}", userId, chatRoomId)
             
-            ResponseEntity.ok(messages)
+            leaveChatRoomUseCase.execute(chatRoomId, userId)
+            logger.info("User {} successfully left chat room: {}", userId, chatRoomId)
+            
+            ResponseEntity.ok(mapOf("message" to "채팅방에서 나갔습니다"))
         } catch (e: IllegalArgumentException) {
-            logger.warn("Get messages failed: {}", e.message)
-            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "메시지 조회에 실패했습니다")))
+            logger.warn("Leave chat room failed: {}", e.message)
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "채팅방 나가기에 실패했습니다")))
         } catch (e: Exception) {
-            logger.error("Get messages error", e)
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("error" to "서버 오류가 발생했습니다"))
-        }
-    }
-    
-    @PostMapping("/direct-messages")
-    fun sendDirectMessage(
-        @Valid @RequestBody request: SendDirectMessageRequest,
-        authentication: Authentication
-    ): ResponseEntity<Any> {
-        return try {
-            val senderHashedId = authentication.name
-            logger.info("API: Sending DM from {} to {}", senderHashedId, request.recipientHashedId)
-            
-            val message = sendDirectMessageUseCase.execute(request, senderHashedId)
-            logger.info("API: DM sent successfully, chatRoomId: {}", message.chatRoomId)
-            
-            ResponseEntity.status(HttpStatus.CREATED).body(message)
-        } catch (e: IllegalArgumentException) {
-            logger.warn("Send direct message failed: {}", e.message)
-            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "다이렉트 메시지 전송에 실패했습니다")))
-        } catch (e: Exception) {
-            logger.error("Send direct message error", e)
+            logger.error("Leave chat room error", e)
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(mapOf("error" to "서버 오류가 발생했습니다"))
         }
     }

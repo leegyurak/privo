@@ -29,11 +29,11 @@ data class AuthResponse(
     val accessToken: String,
     val tokenType: String = "Bearer",
     val expiresIn: Long,
-    val userHashedId: String
+    val userId: String
 )
 
 data class UserProfileResponse(
-    val userHashedId: String,
+    val userId: String,
     val nickname: String,
     val createdAt: String
 )

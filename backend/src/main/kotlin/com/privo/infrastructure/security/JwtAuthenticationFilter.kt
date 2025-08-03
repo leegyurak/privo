@@ -30,17 +30,17 @@ class JwtAuthenticationFilter(
             val token = extractTokenFromRequest(request)
             
             if (token != null && jwtTokenProvider.validateToken(token)) {
-                val userHashedId = jwtTokenProvider.getUserHashedIdFromToken(token)
+                val userId = jwtTokenProvider.getUserIdFromToken(token)
                 
                 val authentication = UsernamePasswordAuthenticationToken(
-                    userHashedId,
+                    userId,
                     null,
                     emptyList()
                 )
                 authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
                 
                 SecurityContextHolder.getContext().authentication = authentication
-                logger.debug("JWT authentication successful for user: $userHashedId")
+                logger.debug("JWT authentication successful for user: $userId")
             }
         } catch (e: Exception) {
             logger.error("Cannot set user authentication", e)

@@ -41,7 +41,7 @@ class GetUserByNicknameUseCaseTest {
         
         // Then
         assertNotNull(result)
-        assertEquals("user-123", result.userHashedId)
+        assertEquals("user-123", result.userId)
         assertEquals(nickname, result.nickname)
         assertEquals("2023-01-01 12:00:00", result.createdAt)
         
