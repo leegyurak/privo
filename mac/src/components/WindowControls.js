@@ -9,10 +9,17 @@ const Container = styled.div`
   padding: 12px 16px;
   -webkit-app-region: drag;
   background: transparent;
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  z-index: 1000;
+  z-index: 99999;
+  pointer-events: none;
+  width: auto;
+  height: auto;
+  
+  * {
+    pointer-events: auto;
+  }
 `;
 
 const Button = styled.button`

@@ -5,12 +5,13 @@ import { Eye, EyeOff, User, Lock, Shuffle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import PrivoLogo from '../components/PrivoLogo';
 
 const Container = styled.div`
   width: 100vw;
   height: 100vh;
   display: flex;
-  background: ${({ theme }) => theme.colors.primary.gradient};
+  background: white;
   overflow: hidden;
 `;
 
@@ -22,6 +23,7 @@ const LeftPanel = styled.div`
   justify-content: center;
   padding: 2rem;
   position: relative;
+  background: white;
   -webkit-app-region: drag;
 `;
 
@@ -30,7 +32,7 @@ const RightPanel = styled(motion.div)`
   background: white;
   display: flex;
   flex-direction: column;
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.1);
+  border-left: 1px solid #e1e8ed;
   -webkit-app-region: no-drag;
 `;
 
@@ -39,18 +41,45 @@ const BrandSection = styled.div`
   margin-bottom: 3rem;
 `;
 
+const LogoContainer = styled.div`
+  width: 100px;
+  height: 100px;
+  background: ${({ theme }) => theme.colors.primary.gradient};
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  margin: 0 auto 2rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const LogoWrapper = styled.div`
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 const BrandTitle = styled(motion.h1)`
-  font-size: 3.5rem;
-  font-weight: 800;
-  color: white;
-  margin-bottom: 1rem;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
 `;
 
 const BrandSubtitle = styled(motion.p)`
-  font-size: 1.25rem;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-size: 1.125rem;
+  color: #8b8b8b;
+  margin-bottom: 3rem;
+  text-align: center;
 `;
 
 const FormSection = styled.div`
@@ -253,17 +282,22 @@ const LoginScreen = () => {
     <Container>
       <LeftPanel>
         <BrandSection>
+          <LogoContainer>
+            <LogoWrapper>
+              <PrivoLogo size={60} color="white" />
+            </LogoWrapper>
+          </LogoContainer>
           <BrandTitle
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.5 }}
           >
             Privo
           </BrandTitle>
           <BrandSubtitle
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
           >
             설계부터 보호되는 대화
           </BrandSubtitle>

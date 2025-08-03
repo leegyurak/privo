@@ -47,7 +47,11 @@ export const authAPI = {
   },
 
   register: async (userData) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/auth/register', {
+      nickname: userData.nickname,
+      password: userData.password,
+      publicKey: userData.publicKey
+    });
     return response.data;
   },
 
@@ -64,7 +68,8 @@ export const authAPI = {
   generateNickname: async () => {
     const response = await api.get('/auth/generate-nickname');
     return response.data;
-  }
+  },
+
 };
 
 // Chat API
@@ -74,33 +79,25 @@ export const chatAPI = {
     return response.data;
   },
 
-  createChatRoom: async (participantIds, name = null) => {
+  createChatRoom: async (name, memberUserIds = []) => {
     const response = await api.post('/chat/rooms', {
-      participantIds,
+      name,
+      isDirectMessage: false,
+      memberUserIds
+    });
+    return response.data;
+  },
+
+  createDirectMessageRoom: async (recipientHashedId, name) => {
+    const response = await api.post('/chat/rooms/direct-messages', {
+      recipientHashedId,
       name
     });
     return response.data;
   },
 
-  getChatMessages: async (roomId, page = 0, size = 50) => {
-    const response = await api.get(`/chat/rooms/${roomId}/messages`, {
-      params: { page, size }
-    });
-    return response.data;
-  },
-
-  sendMessage: async (roomId, messageData) => {
-    const response = await api.post(`/chat/rooms/${roomId}/messages`, messageData);
-    return response.data;
-  },
-
-  sendDirectMessage: async (recipientId, messageData) => {
-    const response = await api.post('/chat/direct-messages', {
-      recipientId,
-      ...messageData
-    });
-    return response.data;
-  },
+  // 메시지 관련 API는 웹소켓으로만 처리됩니다
+  // 메시지 전송은 WebSocket을 통해서만 가능합니다
 
   markAsRead: async (roomId, messageId) => {
     const response = await api.put(`/chat/rooms/${roomId}/messages/${messageId}/read`);
@@ -110,18 +107,29 @@ export const chatAPI = {
 
 // User API
 export const userAPI = {
-  getProfile: async () => {
-    const response = await api.get('/users/profile');
-    return response.data;
-  },
 
   updateProfile: async (profileData) => {
     const response = await api.put('/users/profile', profileData);
     return response.data;
   },
 
-  searchUsers: async (query) => {
-    const response = await api.get(`/users/search?q=${encodeURIComponent(query)}`);
+  searchUsers: async (nickname) => {
+    const response = await api.get(`/auth/user/${encodeURIComponent(nickname)}`);
+    return response.data;
+  },
+
+  getUserByNickname: async (nickname) => {
+    const response = await api.get(`/auth/user/${encodeURIComponent(nickname)}`);
+    return response.data;
+  }
+};
+
+// 오프라인 메시지는 웹소켓 연결 시 자동으로 전송됩니다
+
+// Encryption API
+export const encryptionAPI = {
+  generateKeyPair: async () => {
+    const response = await api.post('/encryption/keypair');
     return response.data;
   }
 };

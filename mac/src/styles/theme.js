@@ -3,7 +3,8 @@ const theme = {
     primary: {
       gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       main: '#667eea',
-      dark: '#764ba2'
+      dark: '#764ba2',
+      light: '#8b9bf7'
     },
     background: {
       main: '#f0f2f5',
@@ -89,6 +90,28 @@ const theme = {
     overlay: 999,
     dropdown: 100,
     header: 50
+  }
+};
+
+export const lightTheme = theme;
+
+export const darkTheme = {
+  ...theme,
+  colors: {
+    ...theme.colors,
+    background: {
+      main: '#1f2937',
+      surface: '#374151',
+      elevated: '#4b5563'
+    },
+    text: {
+      primary: '#f9fafb',
+      secondary: '#d1d5db',
+      light: '#9ca3af',
+      white: '#ffffff'
+    },
+    border: '#4b5563',
+    shadow: 'rgba(0, 0, 0, 0.3)'
   }
 };
 

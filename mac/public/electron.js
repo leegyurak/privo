@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
+const { initializeSecureStorageHandlers } = require('../src/electron/secureStorageHandlers');
 
 // Keep a global reference of the window object
 let mainWindow;
@@ -63,6 +64,9 @@ function createWindow() {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
+  // Initialize secure storage handlers
+  initializeSecureStorageHandlers();
+  
   createWindow();
   createMenu();
 

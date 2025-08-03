@@ -24,24 +24,12 @@ const Container = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: ${({ theme }) => theme.colors.primary.gradient};
+  background: white;
   position: relative;
   overflow: hidden;
   -webkit-app-region: no-drag;
 `;
 
-const BackgroundPattern = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  opacity: 0.1;
-  background-image: radial-gradient(circle at 25% 25%, white 2px, transparent 2px),
-                    radial-gradient(circle at 75% 75%, white 2px, transparent 2px);
-  background-size: 60px 60px;
-  animation: ${pulseAnimation} 4s ease-in-out infinite;
-`;
 
 const LockContainer = styled(motion.div)`
   position: relative;
@@ -51,42 +39,38 @@ const LockContainer = styled(motion.div)`
 `;
 
 const LogoContainer = styled.div`
-  width: 120px;
-  height: 120px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 30px;
+  width: 100px;
+  height: 100px;
+  background: ${({ theme }) => theme.colors.primary.gradient};
+  border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
   animation: ${lockAnimation} 0.6s ease-in-out;
 `;
 
 const LogoWrapper = styled.div`
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
 `;
 
 const AppTitle = styled(motion.h1)`
-  font-size: 3rem;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 1rem;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 0.75rem;
   letter-spacing: -0.02em;
 `;
 
 const AppSubtitle = styled(motion.p)`
   font-size: 1.125rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: #8b8b8b;
   margin-bottom: 3rem;
   text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 `;
 
 const LoadingContainer = styled(motion.div)`
@@ -96,7 +80,7 @@ const LoadingContainer = styled(motion.div)`
 `;
 
 const LoadingText = styled.span`
-  color: rgba(255, 255, 255, 0.8);
+  color: #8b8b8b;
   font-size: 1rem;
   font-weight: 500;
 `;
@@ -110,13 +94,13 @@ const Dot = styled(motion.div)`
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: white;
+  background: #8b8b8b;
 `;
 
 const ClickPrompt = styled(motion.div)`
   position: absolute;
   bottom: 4rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: #8b8b8b;
   font-size: 0.875rem;
   text-align: center;
 `;
@@ -157,8 +141,6 @@ const SplashScreen = () => {
 
   return (
     <Container>
-      <BackgroundPattern />
-      
       <LockContainer
         onClick={handleLockClick}
         whileHover={{ scale: 1.05 }}
@@ -166,7 +148,7 @@ const SplashScreen = () => {
       >
         <LogoContainer>
           <LogoWrapper>
-            <PrivoLogo size={80} color="white" />
+            <PrivoLogo size={60} color="white" />
           </LogoWrapper>
         </LogoContainer>
       </LockContainer>
@@ -219,7 +201,7 @@ const SplashScreen = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1 }}
         >
-          자물쇠를 클릭하여 계속하세요
+          로고를 클릭하여 계속하세요
         </ClickPrompt>
       )}
     </Container>

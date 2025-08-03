@@ -25,7 +25,10 @@
     "crypto-js": "^4.2.0",
     "axios": "^1.6.0",
     "styled-components": "^6.1.0",
-    "electron-is-dev": "^2.0.0"
+    "electron-is-dev": "^2.0.0",
+    "@electron/remote": "^2.1.2",
+    "keychain": "^1.4.0",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "electron": "^25.0.0",

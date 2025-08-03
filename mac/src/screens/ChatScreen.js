@@ -1,9 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Send, Smile, Paperclip, MoreVertical, Phone, Video } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import WindowControls from '../components/WindowControls';
+import { useChat } from '../context/ChatContext';
+import { useAuth } from '../context/AuthContext';
+
+// 메시지 표시용: 로컬 파일 경로 대신 파일명만 보여주도록 처리
+const getDisplayText = (text) => {
+  if (typeof text === 'string') {
+    const lower = text.toLowerCase();
+    const exts = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.txt', '.pdf', '.doc', '.docx'];
+    if (exts.some(ext => lower.endsWith(ext)) && (text.includes('/') || text.includes('\\'))) {
+      const parts = text.split(/[\/\\]/);
+      return parts[parts.length - 1];
+    }
+  }
+  return text;
+};
 
 const Container = styled.div`
   width: 100vw;
@@ -109,11 +124,11 @@ const IconButton = styled.button`
 
 const MessagesContainer = styled.div`
   flex: 1;
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 `;
 
 const MessageGroup = styled.div`
@@ -123,8 +138,9 @@ const MessageGroup = styled.div`
   gap: 0.25rem;
 `;
 
-const Message = styled(motion.div)`
-  max-width: 60%;
+const Message = styled(motion.div).attrs({
+  className: 'chat-message-bubble-v2'
+})`
   padding: 0.75rem 1rem;
   border-radius: 18px;
   background: ${props => props.sent 
@@ -138,6 +154,7 @@ const Message = styled(motion.div)`
   font-size: 0.95rem;
   line-height: 1.4;
   word-wrap: break-word;
+  word-break: break-all;
   position: relative;
   
   ${props => props.sent && `
@@ -149,10 +166,13 @@ const Message = styled(motion.div)`
   `}
 `;
 
-const MessageTime = styled.div`
+const MessageTime = styled.div.attrs({
+  className: 'message-time-v2'
+})`
   font-size: 0.75rem;
   color: ${({ theme }) => theme.colors.text.light};
-  margin: ${props => props.sent ? '0 0.5rem 0 0' : '0 0 0 0.5rem'};
+  align-self: ${props => props.sent ? 'flex-end' : 'flex-start'};
+  text-align: ${props => props.sent ? 'right' : 'left'};
 `;
 
 const TypingIndicator = styled(motion.div)`
@@ -163,7 +183,6 @@ const TypingIndicator = styled(motion.div)`
   background: ${({ theme }) => theme.colors.chat.received};
   border-radius: 18px;
   border-bottom-left-radius: 4px;
-  max-width: 60%;
   color: ${({ theme }) => theme.colors.text.secondary};
   font-size: 0.875rem;
 `;
@@ -178,6 +197,16 @@ const Dot = styled(motion.div)`
   height: 6px;
   border-radius: 50%;
   background: ${({ theme }) => theme.colors.text.light};
+`;
+
+
+const LoadingSpinner = styled(motion.div)`
+  width: 16px;
+  height: 16px;
+  border: 2px solid ${({ theme }) => theme.colors.border};
+  border-top: 2px solid ${({ theme }) => theme.colors.primary.main};
+  border-radius: 50%;
+  margin-bottom: 0.25rem;
 `;
 
 const InputContainer = styled.div`
@@ -207,6 +236,15 @@ const MessageInput = styled.textarea`
   resize: none;
   background: ${({ theme }) => theme.colors.background.main};
   transition: all ${({ theme }) => theme.transitions.fast};
+  overflow-y: hidden;
+  line-height: 1.4;
+  
+  /* 스크롤바 숨기기 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
 
   &:focus {
     outline: none;
@@ -262,94 +300,278 @@ const AttachButton = styled.button`
 `;
 
 const ChatScreen = () => {
+  console.log('*** ChatScreen component rendering ***');
+  
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id: chatRoomId } = useParams();
+  const { user } = useAuth();
+  
+  console.log('ChatScreen: chatRoomId from URL:', chatRoomId);
+  const chatContextValue = useChat();
+  console.log('ChatScreen: useChat() returned:', chatContextValue);
+  console.log('ChatScreen: allMessages from context:', chatContextValue.messages);
+  
+  const { 
+    sendMessage: sendChatMessage, 
+    getChatMessages, 
+    subscribeToChat, 
+    unsubscribeFromChat,
+    loadMessages,
+    loadChatRooms,
+    isConnected,
+    isSendingMessage, // 메시지 전송 중 상태
+    currentSendingMessage, // 현재 전송 중인 메시지 정보
+    chatRooms,
+    messages: allMessages,
+    clearUnreadCount, // 읽지 않은 카운트 초기화 함수
+    getUnreadCount, // 읽지 않은 카운트 가져오기 함수
+    sendTypingIndicator,
+    hasTypingUsers,
+    getTypingUsersNames,
+    loadedChatRooms // 캐시된 채팅방 목록
+  } = chatContextValue;
+  
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const messageInputRef = useRef(null);
+  
+  // 타이핑 인디케이터 상태 (ChatContext에서 관리하는 다른 사용자들의 타이핑 상태 사용)
+  const isOthersTyping = hasTypingUsers(chatRoomId);
+  const typingUsersNames = getTypingUsersNames(chatRoomId);
+  
+  // 타이핑 중인 사용자들의 표시 텍스트 생성
+  const getTypingText = () => {
+    if (typingUsersNames.length === 0) return '';
+    if (typingUsersNames.length === 1) return `${typingUsersNames[0]}님이 입력 중입니다`;
+    if (typingUsersNames.length === 2) return `${typingUsersNames[0]}님과 ${typingUsersNames[1]}님이 입력 중입니다`;
+    return `${typingUsersNames[0]}님 외 ${typingUsersNames.length - 1}명이 입력 중입니다`;
+  };
+  
+  // 타이핑 상태 디버깅
+  useEffect(() => {
+    console.log('*** ChatScreen: Typing state changed ***');
+    console.log('ChatScreen: chatRoomId:', chatRoomId);
+    console.log('ChatScreen: hasTypingUsers result:', isOthersTyping);
+  }, [isOthersTyping, chatRoomId]);
+  
+  // Debug: 로컬 messages 상태 변경 감지
+  useEffect(() => {
+    console.log('ChatScreen: Local messages state changed!');
+    console.log('ChatScreen: Local messages:', messages);
+    console.log('ChatScreen: Local messages count:', messages.length);
+  }, [messages]);
+  
+  // Debug: unread count 변경 감지
+  useEffect(() => {
+    if (chatRoomId && getUnreadCount) {
+      const currentCount = getUnreadCount(chatRoomId);
+      console.log(`*** ChatScreen: UNREAD COUNT CHANGED for room ${chatRoomId}: ${currentCount} ***`);
+    }
+  }, [chatRoomId, getUnreadCount]);
+  const [currentChat, setCurrentChat] = useState(null);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Mock data for demonstration
+  // Load chat room info and messages
   useEffect(() => {
-    const mockMessages = [
-      {
-        id: '1',
-        text: 'Hey! How are you doing today?',
-        sent: false,
-        timestamp: '10:30 AM',
-        delivered: true,
-        read: true
-      },
-      {
-        id: '2',
-        text: 'I\'m doing great, thanks for asking! How about you?',
-        sent: true,
-        timestamp: '10:32 AM',
-        delivered: true,
-        read: true
-      },
-      {
-        id: '3',
-        text: 'Pretty good! Working on some exciting projects. Have you seen the latest updates to our app?',
-        sent: false,
-        timestamp: '10:35 AM',
-        delivered: true,
-        read: true
-      },
-      {
-        id: '4',
-        text: 'Yes! The new design looks amazing. Really love the smooth animations.',
-        sent: true,
-        timestamp: '10:37 AM',
-        delivered: true,
-        read: false
+    if (chatRoomId && user) {
+      console.log('*** ChatScreen: MAIN EFFECT - Initializing chat and clearing unread count for room:', chatRoomId);
+      console.log('ChatScreen: Current unread count before clearing:', getUnreadCount ? getUnreadCount(chatRoomId) : 'N/A');
+      
+      // 채팅방 입장 시 즉시 읽지 않은 카운트 초기화
+      clearUnreadCount(chatRoomId);
+      console.log('ChatScreen: Called clearUnreadCount, new count should be 0');
+      
+      initializeChat();
+    }
+    
+    return () => {
+      if (chatRoomId) {
+        console.log('ChatScreen: Cleanup - unsubscribing from chat room:', chatRoomId);
+        unsubscribeFromChat(chatRoomId);
       }
-    ];
+    };
+  }, [chatRoomId, user, clearUnreadCount, getUnreadCount]);
 
-    setMessages(mockMessages);
+  // Subscribe to real-time messages - directly use allMessages from context
+  useEffect(() => {
+    console.log('*** ChatScreen: MESSAGE UPDATE EFFECT [chatRoomId, allMessages] triggered ***');
+    console.log('ChatScreen: useEffect triggered - chatRoomId:', chatRoomId);
+    console.log('ChatScreen: allMessages object reference:', allMessages);
+    console.log('ChatScreen: allMessages type:', typeof allMessages);
+    console.log('ChatScreen: allMessages is null/undefined:', allMessages == null);
+    console.log('ChatScreen: Available chat rooms in allMessages:', Object.keys(allMessages || {}));
+    console.log('ChatScreen: useEffect dependency values changed');
+    
+    if (chatRoomId) {
+      const roomMessages = allMessages[chatRoomId] || [];
+      console.log('ChatScreen: Updating messages for room', chatRoomId, 'count:', roomMessages.length);
+      console.log('ChatScreen: Room messages:', roomMessages);
+      console.log('ChatScreen: Setting messages to local state...');
+      setMessages(roomMessages);
+      console.log('ChatScreen: Local state updated with', roomMessages.length, 'messages');
+      
+      // 채팅방에 입장했으므로 읽지 않은 메시지 카운트 초기화
+      console.log('ChatScreen: Current unread count before MESSAGE EFFECT clearing:', getUnreadCount ? getUnreadCount(chatRoomId) : 'N/A');
+      clearUnreadCount(chatRoomId);
+      console.log('ChatScreen: Cleared unread count for room from MESSAGE EFFECT:', chatRoomId);
+      console.log('ChatScreen: New unread count after MESSAGE EFFECT clearing:', getUnreadCount ? getUnreadCount(chatRoomId) : 'N/A');
+      
+      // 추가로 한 번 더 확실히 초기화 (지연 실행)
+      setTimeout(() => {
+        console.log('ChatScreen: Timeout clearing - current count:', getUnreadCount ? getUnreadCount(chatRoomId) : 'N/A');
+        clearUnreadCount(chatRoomId);
+        console.log('ChatScreen: Double-cleared unread count for room:', chatRoomId);
+        console.log('ChatScreen: Final unread count after timeout:', getUnreadCount ? getUnreadCount(chatRoomId) : 'N/A');
+      }, 100);
+      
+      // Check if we're getting the right chatRoomId
+      console.log('ChatScreen: Current chatRoomId from URL:', chatRoomId);
+      console.log('ChatScreen: Messages set to state, length:', roomMessages.length);
+    } else {
+      console.log('ChatScreen: No chatRoomId available');
+    }
+    
+    console.log('ChatScreen: MESSAGE UPDATE useEffect completed');
+  }, [chatRoomId, allMessages, clearUnreadCount, getUnreadCount]);
 
-    // Simulate typing indicator
-    const typingTimer = setTimeout(() => {
-      setIsTyping(true);
-      setTimeout(() => setIsTyping(false), 3000);
-    }, 2000);
-
-    return () => clearTimeout(typingTimer);
-  }, [id]);
+  const initializeChat = async () => {
+    try {
+      setLoading(true);
+      console.log('ChatScreen: Starting chat initialization with improved flow');
+      
+      // 캐시 확인
+      const isCached = loadedChatRooms && loadedChatRooms.has(chatRoomId);
+      console.log(`ChatScreen: Chat room ${chatRoomId} is cached: ${isCached}`);
+      
+      // 1단계: Load chat rooms first if not already loaded
+      let rooms = chatRooms;
+      if (!rooms || rooms.length === 0) {
+        console.log('ChatScreen: Loading chat rooms...');
+        rooms = await loadChatRooms();
+      }
+      
+      // 2단계: Find current chat room info
+      const room = rooms.find(room => room.id === chatRoomId);
+      setCurrentChat(room);
+      console.log('ChatScreen: Chat room info loaded:', room?.name);
+      
+      // 3단계: Load local DB messages first
+      console.log('ChatScreen: Loading local DB messages...');
+      await loadMessages(chatRoomId);
+      console.log('ChatScreen: Local DB messages loaded');
+      
+      // 4단계: Subscribe to WebSocket for real-time updates and offline messages
+      // 웹소켓 연결 시 오프라인 메시지가 자동으로 전송되고 addOfflineMessage로 처리됨
+      console.log('ChatScreen: Subscribing to WebSocket for real-time and offline messages...');
+      subscribeToChat(chatRoomId);
+      console.log('ChatScreen: WebSocket subscription completed - offline messages will be merged and sorted');
+      
+    } catch (error) {
+      console.error('Failed to initialize chat:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages, isOthersTyping]);
+
+  // 전역 스크롤 이벤트 리스너 추가 (메시지 로드 시 자동 스크롤)
+  useEffect(() => {
+    const handleScrollToBottom = (event) => {
+      if (event.detail && event.detail.chatId === chatRoomId) {
+        console.log('ChatScreen: Received scrollToBottom event for current chat room');
+        scrollToBottom();
+      }
+    };
+
+    window.addEventListener('scrollToBottom', handleScrollToBottom);
+    return () => {
+      window.removeEventListener('scrollToBottom', handleScrollToBottom);
+    };
+  }, [chatRoomId]);
+
+  // 타이핑 이벤트 전송을 위한 디바운스 처리
+  useEffect(() => {
+    let typingTimer;
+    
+    if (chatRoomId && message.trim()) {
+      console.log('ChatScreen: Sending typing START indicator for room:', chatRoomId);
+      // 메시지 입력 시작 시 타이핑 시작 이벤트 전송
+      sendTypingIndicator(chatRoomId, true);
+      
+      // 일정 시간 후 타이핑 중지 이벤트 전송
+      typingTimer = setTimeout(() => {
+        console.log('ChatScreen: Sending typing STOP indicator (timeout) for room:', chatRoomId);
+        sendTypingIndicator(chatRoomId, false);
+      }, 2000); // 2초 후 타이핑 중지
+    } else if (chatRoomId) {
+      // 메시지가 비어있으면 즉시 타이핑 중지
+      console.log('ChatScreen: Sending typing STOP indicator (empty message) for room:', chatRoomId);
+      sendTypingIndicator(chatRoomId, false);
+    }
+    
+    return () => {
+      if (typingTimer) {
+        clearTimeout(typingTimer);
+      }
+    };
+  }, [message, chatRoomId, sendTypingIndicator]);
+
+  // 자동 높이 조절 함수
+  const adjustTextareaHeight = () => {
+    const textarea = messageInputRef.current;
+    if (textarea) {
+      textarea.style.height = '20px'; // 최소 높이로 초기화
+      const scrollHeight = textarea.scrollHeight;
+      const maxHeight = 120; // max-height와 동일
+      textarea.style.height = Math.min(scrollHeight, maxHeight) + 'px';
+      
+      // 최대 높이에 도달했을 때만 스크롤 활성화
+      if (scrollHeight > maxHeight) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
+    }
+  };
+
+  // 메시지 입력 시 높이 자동 조절
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [message]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
+  const handleSendMessage = async () => {
+    if (!message.trim() || !chatRoomId) return;
+    
+    // 현재 메시지 전송 중인지 확인
+    if (isSendingMessage) {
+      console.warn('ChatScreen: Cannot send message - another message is being sent');
+      console.warn('ChatScreen: Current sending message:', currentSendingMessage);
+      // UI에 알림 표시 가능
+      return;
+    }
 
-    const newMessage = {
-      id: Date.now().toString(),
-      text: message,
-      sent: true,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      delivered: false,
-      read: false
-    };
+    const messageText = message;
+    setMessage(''); // Clear input immediately
 
-    setMessages(prev => [...prev, newMessage]);
-    setMessage('');
-
-    // Simulate message delivery
-    setTimeout(() => {
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === newMessage.id 
-            ? { ...msg, delivered: true }
-            : msg
-        )
-      );
-    }, 1000);
+    try {
+      console.log('ChatScreen: Attempting to send message:', messageText);
+      await sendChatMessage(chatRoomId, messageText);
+      console.log('ChatScreen: Message send request completed');
+    } catch (error) {
+      console.error('ChatScreen: Failed to send message:', error);
+      // 전송 실패 시 메시지를 다시 입력창에 복원할 수 있음
+      if (error.message.includes('기다려주세요')) {
+        setMessage(messageText); // 순차 전송 에러 시 메시지 복원
+      }
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -373,22 +595,16 @@ const ChatScreen = () => {
         </BackButton>
         
         <Avatar>
-          AJ
-          <OnlineStatus />
+          {currentChat?.name ? currentChat.name.substring(0, 2).toUpperCase() : 'CH'}
+          {isConnected && <OnlineStatus />}
         </Avatar>
         
         <ChatInfo>
-          <ChatName>Alice Johnson</ChatName>
-          <ChatStatus>온라인</ChatStatus>
+          <ChatName>{currentChat?.name || 'Chat Room'}</ChatName>
+          <ChatStatus>{isConnected ? '연결됨' : '연결 중...'}</ChatStatus>
         </ChatInfo>
         
         <HeaderActions>
-          <IconButton title="음성 통화">
-            <Phone size={20} />
-          </IconButton>
-          <IconButton title="영상 통화">
-            <Video size={20} />
-          </IconButton>
           <IconButton title="더 많은 옵션">
             <MoreVertical size={20} />
           </IconButton>
@@ -396,29 +612,60 @@ const ChatScreen = () => {
       </Header>
 
       <MessagesContainer>
-        {messages.map((msg, index) => (
-          <MessageGroup key={msg.id} sent={msg.sent}>
-            <Message
-              sent={msg.sent}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              {msg.text}
-            </Message>
-            <MessageTime sent={msg.sent}>
-              {msg.timestamp}
-            </MessageTime>
-          </MessageGroup>
-        ))}
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+            <div>메시지를 불러오는 중...</div>
+          </div>
+        ) : (
+          <>
+            {console.log('ChatScreen: Rendering messages, count:', messages.length)}
+            {console.log('ChatScreen: Messages to render:', messages)}
+            {messages.map((msg, index) => (
+              <MessageGroup key={msg.id} sent={msg.sent}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', flexDirection: msg.sent ? 'row-reverse' : 'row' }}>
+                  {msg.isLoading && (
+                    <LoadingSpinner
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear"
+                      }}
+                    />
+                  )}
+                  <div>
+                    <Message
+                      sent={msg.sent}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      style={{ 
+                        opacity: msg.isTemp ? 0.7 : 1,
+                        borderColor: msg.isFailed ? '#ef4444' : undefined
+                      }}
+                    >
+                      {getDisplayText(msg.text)}
+                    </Message>
+                    <MessageTime sent={msg.sent}>
+                      {msg.timestamp}
+                      {msg.isLoading && ' (전송 중...)'}
+                      {msg.isFailed && ' (전송 실패)'}
+                      {msg.isOffline && ' (오프라인 메시지)'}
+                    </MessageTime>
+                  </div>
+                </div>
+              </MessageGroup>
+            ))}
+          </>
+        )}
 
-        {isTyping && (
+        {isOthersTyping && (
           <TypingIndicator
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
           >
-            <span>Alice님이 입력 중입니다</span>
+            <span>{getTypingText()}</span>
             <TypingDots>
               {[0, 1, 2].map((index) => (
                 <Dot
@@ -442,29 +689,26 @@ const ChatScreen = () => {
       </MessagesContainer>
 
       <InputContainer>
-        <AttachButton title="파일 첨부">
-          <Paperclip size={20} />
-        </AttachButton>
-        
         <InputArea>
           <MessageInput
+            ref={messageInputRef}
             placeholder="메시지를 입력하세요..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             rows="1"
           />
         </InputArea>
-
-        <AttachButton title="이모다이콘 추가">
-          <Smile size={20} />
-        </AttachButton>
         
         <SendButton
           onClick={handleSendMessage}
-          disabled={!message.trim()}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          disabled={!message.trim() || isSendingMessage}
+          whileHover={{ scale: isSendingMessage ? 1 : 1.05 }}
+          whileTap={{ scale: isSendingMessage ? 1 : 0.95 }}
+          style={{ 
+            opacity: isSendingMessage ? 0.6 : 1,
+            cursor: isSendingMessage ? 'not-allowed' : 'pointer'
+          }}
         >
           <Send size={18} />
         </SendButton>
